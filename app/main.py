@@ -330,7 +330,6 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 
 <script>
 let adminKey = localStorage.getItem('ocr_admin_key') || '';
-const H = { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' };
 
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 function login(){
@@ -339,13 +338,17 @@ function login(){
   load();
 }
 async function api(url, opts={}){
-  const res = await fetch(url, { ...opts, headers: { ...H, ...(opts.headers||{}) } });
+  const res = await fetch(url, { ...opts, headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json', ...(opts.headers||{}) } });
   if (res.status === 401) { document.getElementById('main').style.display='none'; document.getElementById('login-card').style.display='block'; throw new Error('未授权'); }
   if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || res.statusText);
   return res.json();
 }
 function fmtBytes(b){ if(!b) return '0 B'; const u=['B','KB','MB','GB']; let i=0; let v=b; while(v>1024 && i<3){v/=1024;i++;} return v.toFixed(v<10?1:0)+' '+u[i]; }
 function fmtTime(ts){ if(!ts) return '—'; const d=new Date(ts*1000); return d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); }
+async function copyKey(key){
+  try { await navigator.clipboard.writeText(key); toast('已复制到剪贴板'); }
+  catch(e) { toast('复制失败，请手动复制'); }
+}
 
 async function load(){
   document.getElementById('login-card').style.display = adminKey ? 'none' : 'block';
@@ -369,7 +372,7 @@ function renderKeys(keys){
   document.getElementById('keys-tbody').innerHTML = keys.map(k => `
     <tr>
       <td><b>${k.name}</b></td>
-      <td class="mono">${k.key.slice(0,16)}…</td>
+      <td class="mono">${k.key.slice(0,16)}… <button class="btn-ghost" style="height:24px;padding:0 10px;font-size:12px" onclick="copyKey('${k.key.replace(/'/g,"\\'")}')">复制</button></td>
       <td><span class="badge ${k.active?'on':'off'}">${k.active?'启用':'停用'}</span></td>
       <td class="mono">${k.calls}</td>
       <td class="mono">${k.avg_ms} ms</td>
